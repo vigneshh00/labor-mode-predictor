@@ -1,450 +1,367 @@
-import React, { useState } from "react";
-import { Box, Typography } from "@mui/material";
-import Container from "react-bootstrap/Container";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import { Bar } from "react-chartjs-2";
-import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
-import modelsData from "../results.json"; 
-import confusionMatrixImg from "../Landing Page Assets/confusion-matrix.png";
-import precisionRecallImg from "../Landing Page Assets/precision-recall.png";
-import modelComparisionImg from "../Landing Page Assets/model-comparision.png";
+import React, { useState } from 'react';
+import { Box, Typography, Container, Grid, Button, Paper, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import modelsData from '../results.json';
+import GridViewIcon from '@mui/icons-material/GridView';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  PointElement,  
-  LineElement,   
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend
 );
+
 const Visualize = React.forwardRef((props, ref) => {
-  const [hoverIndex, setHoverIndex] = useState(null);
-  const [selectedVisualization, setSelectedVisualization] = useState(null);
+  const [visMode, setVisMode] = useState('comparison'); // 'comparison' | 'confusion'
+  const [activeMetric, setActiveMetric] = useState('accuracy');
 
-  const boxStyle = {
-    padding: 2,
-    borderRadius: 2,
-    boxShadow: 3,
-    backgroundColor: "#301536",
-    transition: "transform 0.3s ease",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "auto",
-  };
-
-
-  const generateChartData = (confusionMatrix) => {
+  // Chart configuration for Confusion Matrices
+  const generateConfusionData = (matrix) => {
     return {
-      labels: ["Predicted 0", "Predicted 1"],
+      labels: ['Predicted Normal', 'Predicted C-Section'],
       datasets: [
         {
-          label: "True 0",
-          data: confusionMatrix[0], 
-          backgroundColor: "#FF5733",
-          borderColor: "#FF5733",
-          borderWidth: 1,
+          label: 'Actual Normal Delivery (0)',
+          data: matrix[0],
+          backgroundColor: '#0ea5e9',
+          borderRadius: 6,
         },
         {
-          label: "True 1",
-          data: confusionMatrix[1], 
-          backgroundColor: "#33FF57", 
-          borderColor: "#33FF57",
-          borderWidth: 1,
+          label: 'Actual C-Section Delivery (1)',
+          data: matrix[1],
+          backgroundColor: '#f43f5e',
+          borderRadius: 6,
         },
       ],
     };
   };
 
-  const chartOptions = {
+  const confusionOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      title: {
-        display: true,
-        text: "Confusion Matrix",
-        font: {
-          size: 16,
-        },
-        color: "#ffe6e6",
-      },
       legend: {
+        position: 'top',
         labels: {
-          color: "#ffe6e6",
+          color: '#334155',
+          font: { family: "'Plus Jakarta Sans', sans-serif", weight: '600' },
+          boxWidth: 14,
         },
-        position: "top",
+      },
+      tooltip: {
+        padding: 12,
+        backgroundColor: '#0f172a',
+        titleFont: { family: "'Plus Jakarta Sans', sans-serif", weight: '700' },
+        bodyFont: { family: "'Plus Jakarta Sans', sans-serif" },
+        cornerRadius: 8,
       },
     },
     scales: {
       x: {
-        stacked: true,
-        ticks: { color: "#ffe6e6" },
+        grid: { display: false },
+        ticks: { color: '#64748b', font: { weight: '600' } },
       },
       y: {
-        stacked: true,
-        ticks: { color: "#ffe6e6" },
-      },
-    },
-  };
-  const chartOptions_2 = {
-    responsive: true,
-    plugins: {
-      title: {
-        display: true,
-        text: "Model Comparison",
-        font: {
-          size: 16,
-        },
-        color: "#ffe6e6",
-      },
-      legend: {
-        labels: {
-          color: "#ffe6e6",
-        },
-        position: "top",
-      },
-    },
-    scales: {
-      x: {
-        stacked: true,
-        ticks: { color: "#ffe6e6" },
-        categoryPercentage: 0.5, 
-    barPercentage: 0.8, 
-      },
-      y: {
-        stacked: true,
-        ticks: { color: "#ffe6e6" },
+        grid: { color: '#f1f5f9' },
+        ticks: { color: '#64748b' },
       },
     },
   };
 
-
-
-  const generateModelComparisonData = (metric) => {
+  // Chart configuration for Model Comparison Bar Chart
+  const generateComparisonData = (metric) => {
     const labels = Object.keys(modelsData);
-    const data = labels.map((model) => modelsData[model][metric]);
+    const data = labels.map((m) => modelsData[m][metric]);
+
+    const palette = {
+      accuracy: '#0284c7',
+      precision: '#0f766e',
+      recall: '#7c3aed',
+      f1_score: '#d97706',
+    };
 
     return {
       labels,
       datasets: [
         {
-          label: metric,
+          label: `${metric.toUpperCase().replace('_', ' ')} (%)`,
           data,
-          backgroundColor: metric === "accuracy" ? "#FF5733" : metric === "precision" ? "green" : metric === "recall" ? "blue" : "orange",
-          borderColor: metric === "accuracy" ? "#FF5733" : metric === "precision" ? "green" : metric === "recall" ? "blue" : "orange",
-          borderWidth: 1,
+          backgroundColor: palette[metric] || '#0284c7',
+          borderRadius: 8,
+          barThickness: 34,
         },
       ],
     };
   };
 
+  const comparisonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        padding: 12,
+        backgroundColor: '#0f172a',
+        titleFont: { family: "'Plus Jakarta Sans', sans-serif", weight: '700' },
+        bodyFont: { family: "'Plus Jakarta Sans', sans-serif" },
+        cornerRadius: 8,
+        callbacks: {
+          label: (context) => ` ${context.parsed.y.toFixed(2)}%`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: '#334155',
+          font: { family: "'Plus Jakarta Sans', sans-serif", weight: '600', size: 12 },
+        },
+      },
+      y: {
+        min: 70,
+        max: 100,
+        grid: { color: '#f1f5f9' },
+        ticks: {
+          color: '#64748b',
+          callback: (value) => `${value}%`,
+        },
+      },
+    },
+  };
 
   return (
-    <>
-      {selectedVisualization === null && (
-        <div ref={ref} style={{ height: "100vh", paddingTop: "80px" }}>
-          <h2 style={{ textAlign: "center" }}>Visualize</h2>
-          <Container style={{ paddingTop: "70px" }}>
-            <Row>
-              <Col>
-                <Box
-                  sx={{
-                    ...boxStyle,
-                    transform: hoverIndex === 1 ? "scale(1.05)" : "scale(1)",
-                  }}
-                  onMouseEnter={() => setHoverIndex(1)}
-                  onMouseLeave={() => setHoverIndex(null)}
-                  onClick={() => setSelectedVisualization("confusion matrix")}
-                >
-                  <Box
-                    component="img"
-                    src={confusionMatrixImg}
-                    sx={{ height: "100px" }}
-                  />
-                  <Typography
-                    variant="body2"
-                    style={{ color: "#ffe6e6", paddingTop: "20px" }}
-                    sx={{fontSize:'22px'}}
-                  >
-                    Confusion Matrix
-                  </Typography>
-                </Box>
-              </Col>
-              <Col>
-                <Box
-                  sx={{
-                    ...boxStyle,
-                    transform: hoverIndex === 3 ? "scale(1.05)" : "scale(1)",
-                  }}
-                  onMouseEnter={() => setHoverIndex(3)}
-                  onMouseLeave={() => setHoverIndex(null)}
-                  onClick={()=>setSelectedVisualization("model comparison")}
-                >
-                  <Box
-                    component="img"
-                    src={modelComparisionImg}
-                    sx={{ height: "100px" }}
-                  />
-                  <Typography
-                    variant="body2"
-                    style={{ color: "#ffe6e6", paddingTop: "20px" }}
-                  sx={{fontSize:'22px'}}
-                  >
-                    Model Comparison
-                  </Typography>
-                </Box>
-              </Col>
-            </Row>
-          </Container>
-        </div>
-      )}
+    <Box
+      ref={ref}
+      sx={{
+        py: { xs: 8, md: 12 },
+        backgroundColor: '#f8fafc',
+      }}
+    >
+      <Container maxWidth="lg">
+        {/* Section Header */}
+        <Box sx={{ textAlign: 'center', mb: 6 }}>
+          <Typography
+            variant="overline"
+            sx={{
+              color: '#0284c7',
+              fontWeight: 800,
+              letterSpacing: '0.1em',
+              fontSize: '0.85rem',
+            }}
+          >
+            PERFORMANCE ANALYTICS
+          </Typography>
+          <Typography
+            variant="h2"
+            sx={{
+              fontWeight: 800,
+              fontSize: { xs: '2rem', md: '2.5rem' },
+              color: '#0f172a',
+              letterSpacing: '-0.02em',
+              mt: 1,
+              mb: 2,
+            }}
+          >
+            Interactive Visualizations
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              color: '#64748b',
+              fontSize: '1.1rem',
+              maxWidth: '680px',
+              mx: 'auto',
+            }}
+          >
+            Explore live diagnostic metrics, compare algorithm performance side-by-side, and inspect class-level confusion matrices.
+          </Typography>
 
-      {selectedVisualization === "confusion matrix" && (
-        <div
-          style={{
-            height: "auto",
-            paddingTop: "80px",
-            backgroundColor: "#ffe6e6",
-          }}
-        >
-          <h2 style={{ textAlign: "center" }}>
-            Confusion Matrices for All Models
-          </h2>
-          <Container style={{ paddingTop: "40px" }}>
-            <Row>
-              {Object.keys(modelsData).map((model, index) => (
-                <Col key={model} xs={12} md={6}>
-                  <Box
+          {/* Mode Toggle Controls (Vector Icon Buttons, No Pictures) */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <ToggleButtonGroup
+              value={visMode}
+              exclusive
+              onChange={(e, newMode) => newMode && setVisMode(newMode)}
+              sx={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                p: 0.5,
+                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+              }}
+            >
+              <ToggleButton
+                value="comparison"
+                sx={{
+                  px: 3,
+                  py: 1,
+                  borderRadius: '10px !important',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  border: 'none !important',
+                  '&.Mui-selected': {
+                    backgroundColor: '#0284c7',
+                    color: '#ffffff',
+                    '&:hover': { backgroundColor: '#0369a1' },
+                  },
+                }}
+              >
+                <BarChartIcon sx={{ mr: 1, fontSize: 20 }} />
+                Model Comparison Benchmarks
+              </ToggleButton>
+              <ToggleButton
+                value="confusion"
+                sx={{
+                  px: 3,
+                  py: 1,
+                  borderRadius: '10px !important',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  border: 'none !important',
+                  '&.Mui-selected': {
+                    backgroundColor: '#0284c7',
+                    color: '#ffffff',
+                    '&:hover': { backgroundColor: '#0369a1' },
+                  },
+                }}
+              >
+                <GridViewIcon sx={{ mr: 1, fontSize: 20 }} />
+                Confusion Matrix Grids
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        </Box>
+
+        {/* View 1: Model Comparison */}
+        {visMode === 'comparison' && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 3, md: 5 },
+              borderRadius: '24px',
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#ffffff',
+              boxShadow: '0 10px 30px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 2,
+                mb: 4,
+              }}
+            >
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                  Cross-Model Metric Benchmark
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#64748b' }}>
+                  Select a performance metric to update the cross-model comparative visualization.
+                </Typography>
+              </Box>
+
+              {/* Metric Selector Buttons */}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {[
+                  { id: 'accuracy', label: 'Accuracy' },
+                  { id: 'precision', label: 'Precision' },
+                  { id: 'recall', label: 'Recall' },
+                  { id: 'f1_score', label: 'F1 Score' },
+                ].map((m) => (
+                  <Button
+                    key={m.id}
+                    size="small"
+                    variant={activeMetric === m.id ? 'contained' : 'outlined'}
+                    onClick={() => setActiveMetric(m.id)}
                     sx={{
-                      padding: 2,
-                      borderRadius: 2,
-                      boxShadow: 3,
-                      backgroundColor: "#301536",
-                      marginBottom: "20px",
-                      color: "#ffe6e6",
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      px: 2,
+                      py: 0.7,
+                      backgroundColor: activeMetric === m.id ? '#0284c7' : 'transparent',
+                      borderColor: activeMetric === m.id ? '#0284c7' : '#cbd5e1',
+                      color: activeMetric === m.id ? '#ffffff' : '#475569',
+                      '&:hover': {
+                        backgroundColor: activeMetric === m.id ? '#0369a1' : '#f1f5f9',
+                      },
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      style={{
-                        color: "#ffe6e6",
-                        textAlign: "center",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      {model}
+                    {m.label}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+
+            {/* Comparison Bar Chart */}
+            <Box sx={{ height: { xs: 320, md: 440 }, position: 'relative' }}>
+              <Bar data={generateComparisonData(activeMetric)} options={comparisonOptions} />
+            </Box>
+          </Paper>
+        )}
+
+        {/* View 2: Confusion Matrices for All Models */}
+        {visMode === 'confusion' && (
+          <Grid container spacing={3.5}>
+            {Object.keys(modelsData).map((modelName) => {
+              const matrix = modelsData[modelName].confusion_matrix;
+              if (!matrix) return null;
+
+              return (
+                <Grid item xs={12} md={6} key={modelName}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3.5,
+                      borderRadius: '20px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#ffffff',
+                      boxShadow: '0 4px 15px rgba(15, 23, 42, 0.03)',
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', mb: 0.5 }}>
+                      {modelName}
                     </Typography>
-                    <Bar
-                      data={generateChartData(
-                        modelsData[model].confusion_matrix
-                      )}
-                      options={{
-                        ...chartOptions,
-                        plugins: {
-                          ...chartOptions.plugins,
-                          title: {
-                            display: true,
-                            text: `${model} - Confusion Matrix`,
-                            font: { size: 14, color: "#ffe6e6" },
-                          },
-                        },
-                        scales: {
-                          x: {
-                            ticks: { color: "#ffe6e6" },
-                          },
-                          y: {
-                            ticks: { color: "#ffe6e6" },
-                          },
-                        },
-                      }}
-                    />
-                  </Box>
-                </Col>
-              ))}
-            </Row>
-          </Container>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginTop: "20px",
-            }}
-          >
-            <button
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#301536",
-                color: "#ffe6e6",
-                border: "none",
-                borderRadius: "5px",
-                cursor: "pointer",
-                marginBottom: "20px",
-              }}
-              onClick={() => setSelectedVisualization(null)}
-            >
-              Back
-            </button>
-          </div>
-        </div>
-      )}
-       {selectedVisualization === "model comparison" && (
-        <div
-          style={{
-            height: "auto",
-            paddingTop: "80px",
-            backgroundColor: "#ffe6e6",
-          }}
-        >
-          <h2 style={{ textAlign: "center" }}>
-            Model Comparison for All Metrics
-          </h2>
-          <Container style={{ paddingTop: "40px" }}>
-            <Row>
-              
-              <Col xs={12} md={6}>
-                <Box
-                  sx={{
-                    padding: 2,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    backgroundColor: "#301536",
-                    marginBottom: "20px",
-                    color: "#ffe6e6",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    style={{
-                      color: "#ffe6e6",
-                      textAlign: "center",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    Accuracy 
-                  </Typography>
-                  <Bar
-                    data={generateModelComparisonData("accuracy")}
-                    options={chartOptions_2}
-                  />
-                </Box>
-              </Col>
-              <Col xs={12} md={6}>
-                <Box
-                  sx={{
-                    padding: 2,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    backgroundColor: "#301536",
-                    marginBottom: "20px",
-                    color: "#ffe6e6",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    style={{
-                      color: "#ffe6e6",
-                      textAlign: "center",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    Precision 
-                  </Typography>
-                  <Bar
-                    data={generateModelComparisonData("precision")}
-                    options={chartOptions_2}
-                  />
-                </Box>
-              </Col>
-            </Row>
+                    <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 2.5 }}>
+                      Class 0: Normal Vaginal Birth | Class 1: Cesarean Delivery
+                    </Typography>
 
-            
-            <Row>
-              <Col xs={12} md={6}>
-                <Box
-                  sx={{
-                    padding: 2,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    backgroundColor: "#301536",
-                    marginBottom: "20px",
-                    color: "#ffe6e6",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    style={{
-                      color: "#ffe6e6",
-                      textAlign: "center",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    Recall 
-                  </Typography>
-                  <Bar
-                    data={generateModelComparisonData("recall")}
-                    options={chartOptions_2}
-                  />
-                </Box>
-              </Col>
-              <Col xs={12} md={6}>
-                <Box
-                  sx={{
-                    padding: 2,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    backgroundColor: "#301536",
-                    marginBottom: "20px",
-                    color: "#ffe6e6",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    style={{
-                      color: "#ffe6e6",
-                      textAlign: "center",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    F1 Score 
-                  </Typography>
-                  <Bar
-                    data={generateModelComparisonData("f1_score")}
-                    options={chartOptions_2}
-                  />
-                </Box>
-              </Col>
-            </Row>
-          </Container>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginTop: "20px",
-            }}
-          >
-            <button
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#301536",
-                color: "#ffe6e6",
-                border: "none",
-                borderRadius: "5px",
-                cursor: "pointer",
-                marginBottom: "20px",
-              }}
-              onClick={() => setSelectedVisualization(null)}
-            >
-              Back
-            </button>
-          </div>
-        </div>
-      )}
-
-    </>
+                    <Box sx={{ height: 240, position: 'relative' }}>
+                      <Bar data={generateConfusionData(matrix)} options={confusionOptions} />
+                    </Box>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
+      </Container>
+    </Box>
   );
 });
 

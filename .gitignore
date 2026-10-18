@@ -1,6 +1,49 @@
+# Virtual environments
+venv/
+venv
+**/venv/
+**/venv
+server/venv/
+server/venv
+flask-server/venv/
+flask-server/venv
+.venv/
+.venv
+env/
+env
+ENV/
+ENV
 
+# Python cache & artifacts
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Node dependencies & logs
+node_modules/
+**/node_modules/
+node_modules
+Client/node_modules/
+Client/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Excel temp files
+~$*.xlsx
+flask-server/~$Dataset.xlsx
+server/~$*.xlsx
+
+# Specific project assets ignored previously
 Client/public/about-bg.jpg
 Client/src/Landing Page Assets/about-bg.avif
 Client/src/Landing Page Assets/about-bg.jpg
-/flask-server/venv
-flask-server/~$Dataset.xlsx
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
